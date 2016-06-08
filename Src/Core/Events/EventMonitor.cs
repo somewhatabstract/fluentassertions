@@ -5,7 +5,7 @@ namespace FluentAssertions.Events
     /// <summary>
     /// Monitors events on a given source
     /// </summary>
-    public interface IEventMonitor
+    public interface IEventMonitor : IDisposable
     {
         /// <summary>
         /// Attaches event monitoring for the events defined by <paramref name="typeDefiningEventsToMonitor"/>.

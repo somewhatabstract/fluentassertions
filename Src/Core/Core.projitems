@@ -110,7 +110,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Equivalency\TryConversionEquivalencyStep.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Equivalency\ValueTypeEquivalencyStep.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Events\EventMonitor.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Events\EventRecorder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Events\EventRecordersMap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Events\IEventRecorder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Events\RecordedEvent.cs" />

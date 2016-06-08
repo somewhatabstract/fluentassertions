@@ -14,25 +14,33 @@ namespace FluentAssertions.Events
     {
         private readonly Dictionary<WeakReference, IEventMonitor> map = new Dictionary<WeakReference, IEventMonitor>();
 
-        public void Add(object eventSource, IEventMonitor recorder )
+        public void Add(object eventSource, IEventMonitor recorder)
         {
-            ForEach(eventSource, keyValuePair => map.Remove(keyValuePair.Key));
+            Remove(eventSource);
+            map.Add(new WeakReference(eventSource), recorder);
+        }
 
-            map.Add(new WeakReference(eventSource), recorder );
+        public void Remove(object eventSource)
+        {
+            ForEach(eventSource, keyValuePair =>
+            {
+                map.Remove(keyValuePair.Key);
+                keyValuePair.Value.Dispose();
+            });
         }
 
         public IEventMonitor this[object eventSource]
         {
             get
             {
-                IEventMonitor result = null;
-                TryGetMonitor( eventSource, out result );
+                IEventMonitor result;
+                TryGetMonitor(eventSource, out result);
 
                 if (result == null)
                 {
-                    throw new InvalidOperationException(string.Format(
-                        "Object <{0}> is not being monitored for events or has already been garbage collected. " +
-                            "Use the MonitorEvents() extension method to start monitoring events.", eventSource));
+                    throw new InvalidOperationException(
+                        $"Object <{eventSource}> is not being monitored for events or has already been garbage collected. " +
+                        "Use the MonitorEvents() extension method to start monitoring events.");
                 }
 
                 return result;
@@ -42,7 +50,7 @@ namespace FluentAssertions.Events
         public bool TryGetMonitor(object eventSource, out IEventMonitor eventMonitor)
         {
             IEventMonitor result = null;
-            ForEach( eventSource, pair => result = pair.Value );
+            ForEach(eventSource, pair => result = pair.Value);
             eventMonitor = result;
             return eventMonitor != null;
         }

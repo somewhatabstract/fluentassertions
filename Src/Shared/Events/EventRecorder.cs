@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 
 namespace FluentAssertions.Events
 {
@@ -15,30 +16,79 @@ namespace FluentAssertions.Events
         private readonly IList<RecordedEvent> raisedEvents = new List<RecordedEvent>();
         private readonly object lockable = new object();
         private WeakReference eventObject;
+        private bool isDisposed;
+
+#if !SILVERLIGHT && !WINRT && !PORTABLE && !CORE_CLR
+        private readonly EventInfo eventInfo;
 
         /// <summary>
         /// </summary>
         /// <param name = "eventRaiser">The object events are recorded from</param>
-        /// <param name = "eventName">The name of the event that's recorded</param>
-        public EventRecorder(object eventRaiser, string eventName)
+        /// <param name = "targetEventInfo">The <see cref="EventInfo" /> for the event that's recorded</param>
+        public EventRecorder(object eventRaiser, EventInfo targetEventInfo)
         {
             EventObject = eventRaiser;
-            EventName = eventName;
+            eventInfo = targetEventInfo;
+            EventName = eventInfo.Name;
+            Handler = EventHandlerFactory.GenerateHandler(eventInfo.EventHandlerType, this);
+            eventInfo.AddEventHandler(eventRaiser, Handler);
         }
+
+        public void Dispose()
+        {
+            if (!isDisposed)
+            {
+                isDisposed = true;
+                Reset();
+                eventInfo.RemoveEventHandler(EventObject, Handler);
+            }
+        }
+
+        public Delegate Handler { get; }
+#else
+        /// <summary>
+        /// </summary>
+        /// <param name = "eventRaiser">The object events are recorded from</param>
+        public EventRecorder(System.ComponentModel.INotifyPropertyChanged eventRaiser)
+        {
+            EventObject = eventRaiser;
+            EventName = "PropertyChanged";
+            eventRaiser.PropertyChanged += OnRecordEvent;
+        }
+
+        public void Dispose()
+        {
+            if (!isDisposed)
+            {
+                isDisposed = true;
+                Reset();
+                var notifier = (EventObject as System.ComponentModel.INotifyPropertyChanged);
+                if (notifier != null)
+                {
+                    notifier.PropertyChanged -= OnRecordEvent;
+                }
+            }
+        }
+
+        private void OnRecordEvent(object sender, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            RecordEvent(sender, args);
+        }
+#endif
 
         /// <summary>
         ///   The object events are recorded from
         /// </summary>
         public object EventObject
         {
-            get { return (eventObject == null) ? null : eventObject.Target; }
+            get { return eventObject?.Target; }
             private set { eventObject = new WeakReference(value); }
         }
 
         /// <summary>
         ///   The name of the event that's recorded
         /// </summary>
-        public string EventName { get; private set; }
+        public string EventName { get; }
 
         /// <summary>
         ///   Enumerate raised events
@@ -79,7 +129,7 @@ namespace FluentAssertions.Events
         /// </summary>
         public void Reset()
         {
-            lock ( lockable )
+            lock (lockable)
             {
                 raisedEvents.Clear();
             }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace FluentAssertions.Events
@@ -5,7 +6,7 @@ namespace FluentAssertions.Events
     /// <summary>
     ///   Records raised events for one event on one object
     /// </summary>
-    public interface IEventRecorder : IEnumerable<RecordedEvent>
+    public interface IEventRecorder : IEnumerable<RecordedEvent>, IDisposable
     {
         /// <summary>
         ///   Store information about a raised event

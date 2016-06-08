@@ -41,16 +41,29 @@ namespace FluentAssertions.Events
             return eventMonitor;
         }
 
+        private bool isDisposed;
+        private readonly WeakReference eventSource;
+
+
         public static IEventMonitor Get(object eventSource)
         {
             return Map[eventSource];
+        }
+
+        public void Dispose()
+        {
+            if (!isDisposed)
+            {
+                isDisposed = true;
+                Map.Remove( eventSource );
+                DisposeInternal();
+            }
         }
     }
 
 #if !SILVERLIGHT && !WINRT && !PORTABLE && !CORE_CLR
     internal partial class EventMonitor
     {
-        private readonly WeakReference eventSource;
         private readonly IDictionary<string, IEventRecorder> registeredRecorders = new Dictionary<string, IEventRecorder>();
 
 
@@ -62,6 +75,15 @@ namespace FluentAssertions.Events
             }
 
             this.eventSource = new WeakReference(eventSource);
+        }
+
+        private void DisposeInternal()
+        {
+            Map.Remove( eventSource );
+            foreach (var recorder in registeredRecorders.Values)
+            {
+                recorder.Dispose();
+            }
         }
 
         public void Reset()
@@ -103,10 +125,8 @@ namespace FluentAssertions.Events
             IEventRecorder recorder;
             if (!registeredRecorders.TryGetValue(eventInfo.Name, out recorder))
             {
-                recorder = new EventRecorder(eventSource.Target, eventInfo.Name);
+                recorder = new EventRecorder(eventSource.Target, eventInfo);
                 registeredRecorders.Add(eventInfo.Name, recorder);
-                var handler = EventHandlerFactory.GenerateHandler(eventInfo.EventHandlerType, recorder);
-                eventInfo.AddEventHandler(eventSource.Target, handler);
             }
         }
     }
@@ -117,8 +137,8 @@ namespace FluentAssertions.Events
 
         public EventMonitor(System.ComponentModel.INotifyPropertyChanged eventSource)
         {
-            eventRecorder = new EventRecorder(eventSource, "PropertyChanged");
-            eventSource.PropertyChanged += (sender, args) => eventRecorder.RecordEvent(sender, args);
+            eventRecorder = new EventRecorder(eventSource);
+            this.eventSource = new WeakReference(eventSource);
         }
         
         public void Reset()
@@ -144,6 +164,11 @@ namespace FluentAssertions.Events
             default:
                 throw new InvalidOperationException($"Not monitoring any events named \"{eventName}\".");
             }
+        }
+
+        private void DisposeInternal()
+        {
+            eventRecorder.Dispose();
         }
     }
 #endif
